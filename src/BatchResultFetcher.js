@@ -1,4 +1,5 @@
 const utils = require('./cypher-common');
+const log = require('./log');
 
 /**
  * Class which fetches batches at a time from a given cypher query.
@@ -45,7 +46,7 @@ module.exports = class BatchResultFetcher {
      * are.
      */
     getCount() {
-        console.log(this.name, 'counting');
+        log.info(this.name, 'counting');
         if (this.count) { return Promise.resolve(this.count); }
 
         return this.session.run(this.countQuery)
@@ -53,7 +54,7 @@ module.exports = class BatchResultFetcher {
                 const count = result.records[0].get('count').toNumber();                
                 this.count = count;
                 this.batches = [...utils.range(0, count, this.batchSize)];
-                console.log(this.name, count, 'total to fetch, which will be divided into ', this.count, 'batches');
+                log.info(this.name, count, 'total to fetch, which will be divided into ', this.count, 'batches');
                 return count;
             });
     }
@@ -90,7 +91,7 @@ module.exports = class BatchResultFetcher {
             // Get this batch with the given SKIP parameter.
             const skipNumber = this.batches[this.batchIndex];
 
-            console.log('FETCH ',this.name, 'batch', this.batchIndex, 'of', this.batches.length);
+            log.info('FETCH ',this.name, 'batch', this.batchIndex, 'of', this.batches.length);
             // Increment to get next batch on subsequent call.
             this.batchIndex++;
 
@@ -103,7 +104,7 @@ module.exports = class BatchResultFetcher {
         .then(nodes => nodes === null ? null : utils.extractPropertyContainers(nodes))
         .then(results => {
             this.batchesComplete++;
-            console.log('COMPLETE ', this.name, results.length, 'records in batch', bi, 'of', this.batches.length);
+            // log.info('COMPLETE ', this.name, results.length, 'records in batch', bi, 'of', this.batches.length);
             return results;
         });
     }

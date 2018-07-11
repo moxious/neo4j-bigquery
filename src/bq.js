@@ -6,6 +6,7 @@ const BigQuery = require('@google-cloud/bigquery');
 const path = require('path');
 const fs = require('fs');
 const _ = require('lodash');
+const log = require('./log');
 
 const DEFAULT_OPTIONS = {
     sourceFormat: 'CSV',
@@ -101,7 +102,7 @@ const appendBigqueryTable = (datasetId, file, tableId, first=false, options=DEFA
         loadOptions.autodetect = true;
     }
 
-    // console.log('appendBigqueryTable ', file, '->', tableId, 'first', first);
+    // log.info('appendBigqueryTable ', file, '->', tableId, 'first', first);
     // Streaming insert rather than load would save a lot of IO, but is not as good
     // of an option because we must know ahead of time what the schema is, auto-detection
     // isn't available.  So doing it this way allows us to use Google's schema auto-detection.
@@ -115,7 +116,7 @@ const appendBigqueryTable = (datasetId, file, tableId, first=false, options=DEFA
             const end = new Date().getTime();
 
             // load() waits for the job to finish
-            console.log(`BQ: ${job.status.state} Load Job ${job.id}`, file, '->', table.id, (end - start), 'ms');
+            log.info(`BQ: ${job.status.state} Load Job ${job.id}`, file, '->', table.id, (end - start), 'ms');
       
             // Check the job's status for errors
             const errors = job.status.errors;
@@ -126,8 +127,8 @@ const appendBigqueryTable = (datasetId, file, tableId, first=false, options=DEFA
             return table;
         })
         .catch(err => {
-            console.error(`BQ: Load Job FAILED`, file, '->', tableId);
-            console.error(err);
+            log.error(`BQ: Load Job FAILED`, file, '->', tableId);
+            log.error(err);
             return table;
         })
 };

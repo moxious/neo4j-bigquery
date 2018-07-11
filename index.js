@@ -8,6 +8,7 @@ const Promise = require('bluebird');
 const PromisePool = require('es6-promise-pool');
 const fs = require('fs');
 const yargs = require('yargs');
+const log = require('./src/log');
 
 const CSVFile = require('./src/CSVFile');
 const bq = require('./src/bq');
@@ -33,13 +34,13 @@ const driver = neo4j.driver(config.neo4jURI,
 const session = driver.session();
 
 const allLabelCombos = () => {
-    console.log('Fetching all label combinations');
+    log.info('Fetching all label combinations');
     return session.run("MATCH (n) RETURN distinct(labels(n)) as labels")
         .then(result => result.records.map(rec => rec.get('labels')));
 };
 
 const allRelCombos = () => {
-    console.log('Fetching all label/relationship combinations');
+    log.info('Fetching all label/relationship combinations');
     return session.run("MATCH (n)-[r]->(m) return distinct(labels(n)) as from, type(r) as relType, labels(m) as to")
         .then(result => result.records.map(rec => ({
             from: rec.get('from'),
@@ -126,14 +127,14 @@ const relBatches = (relCombo) => {
 // the promise pool.
 const genericBackendPromiseProducer = (batchResultFetcher, table, file) => {
     if (!batchResultFetcher.hasMore()) {
-        console.log('Fetcher ', batchResultFetcher.name, 'exhausted; returning null');
+        log.info('Fetcher ', batchResultFetcher.name, 'exhausted; returning null');
         return null;
     }
 
     return batchResultFetcher.nextBatch()
         .then(neo4jRecords => {
             if (neo4jRecords === null || neo4jRecords === undefined || neo4j.length == 0) {
-                console.log('Fetcher ', batchResultFetcher.name, 'exhausted; INNER returning null');
+                log.info('Fetcher ', batchResultFetcher.name, 'exhausted; INNER returning null');
                 return null;
             }
 
@@ -164,12 +165,12 @@ const nodeBackend = (labelCombo, batchResultFetcher) => {
     let batch = 0;
     const promiseProducer = () => {
         if (!batchResultFetcher.hasMore()) {
-            console.log(batchResultFetcher.name, 'producer exhausted', batchResultFetcher.summary());
+            log.info(batchResultFetcher.name, 'producer exhausted', batchResultFetcher.summary());
             return null;
         }
 
         const file = config.writeDir + `/${labelCombo.join('_')}-batch-${batch++}.csv`;
-        // console.log('BACKEND:', labelCombo, 'in', file, 'going to', tableName);
+        // log.info('BACKEND:', labelCombo, 'in', file, 'going to', tableName);
         return genericBackendPromiseProducer(batchResultFetcher, tableName, file);
     };
 
@@ -190,7 +191,7 @@ const relBackend = (relCombo, batchResultFetcher) => {
     let batch = 0;
     const promiseProducer = () => {
         if (!batchResultFetcher.hasMore()) {
-            console.log(batchResultFetcher.name, 'producer exhausted', batchResultFetcher.summary());
+            log.info(batchResultFetcher.name, 'producer exhausted', batchResultFetcher.summary());
             return null;
         }
         const file = config.writeDir + `/${tableName}-batch-${batch++}.csv`;
@@ -203,7 +204,7 @@ const relBackend = (relCombo, batchResultFetcher) => {
 };
 
 const main = args => {
-    console.log('MAIN', args);
+    log.info('MAIN', args);
     // OVERALL FLOW
     //
     // (SETUP) - fetch a list of every node label combination, and every nodelable
@@ -237,7 +238,7 @@ const main = args => {
         .then(([labelCombos, relCombos, results]) => {
             const dataset = results[0];
             config.datasetId = dataset.id;
-            console.log(`BQ Dataset ${bq.projectId}/${dataset.id} created`);
+            log.info(`BQ Dataset ${bq.projectId}/${dataset.id} created`);
 
             const nodePromises = Promise.map(labelCombos.filter(lc => lc.length > 0), lc => {
                 const batchResultFetcher = nodeBatches(lc);
@@ -287,9 +288,9 @@ const main = args => {
                     return poolOfPools.start();
                 });
         })
-        .catch(err => console.warn(err))
+        .catch(err => log.warn(err))
         .then(() => driver.close())
-        .then(() => console.log('Exiting'));
+        .then(() => log.info('Exiting'));
 };
 
 main(yargs.argv);
