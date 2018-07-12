@@ -19,13 +19,14 @@ const cypherCommon = require('./src/cypher-common');
  * Adjustable configuration that drives everything.
  */
 const config = {
-    concurrency: Number.isNaN(process.env.CONCURRENCY) ? Number(process.env.CONCURRENCY) : 3,
+    concurrency: Number.isNaN(process.env.CONCURRENCY) ? 3 : Number(process.env.CONCURRENCY),
     neo4jURI: process.env.NEO4J_URI || 'bolt://localhost:7687',
     neo4jUser: process.env.NEO4J_USERNAME || 'neo4j',
     neo4jPass: process.env.NEO4J_PASSWORD || 'admin',
     writeDir: '/tmp/csv',
     datasetName: 'neo4j_export_' + Math.floor(Math.random() * 999),
     datasetId: undefined, /* Captured on create */
+    removeFiles: true,
 };
 
 const driver = neo4j.driver(config.neo4jURI,
@@ -101,7 +102,7 @@ const relBatches = (relCombo) => {
     `;
 
     const batchQuery = `
-        MATCH (n:\`${l1}\`)-[r:\`${relCombo.relType}\`]-(m:\`${l2}\`)
+        MATCH (n:\`${l1}\`)-[r:\`${relCombo.relType}\`]->(m:\`${l2}\`)
         WHERE ${nWhere} AND ${mWhere}
         RETURN id(n) as from, id(m) as to, r
         ORDER BY id(r) ASC
@@ -145,11 +146,11 @@ const genericBackendPromiseProducer = (batchResultFetcher, table, file) => {
             return CSVFile.writeFileFromRecords(file, neo4jRecords)
                 .then(() => bq.appendBigqueryTable(config.datasetId, file, table, isFirstBatch))
                 .then(results => {
-                    // if (config.deleteFileWhenLoaded) {
-                    //     fs.unlink(file, err => {
-                    //         if (err) { throw 'Failed to delete file' + err; }
-                    //     });
-                    // }
+                    if (config.removeFiles) {
+                        fs.unlink(file, err => {
+                            if (err) { throw 'Failed to delete file' + err; }
+                        });
+                    }
                     return results;
                 });
         });
@@ -204,7 +205,7 @@ const relBackend = (relCombo, batchResultFetcher) => {
 };
 
 const main = args => {
-    log.info('MAIN', args);
+    log.info('MAIN', args, config);
     // OVERALL FLOW
     //
     // (SETUP) - fetch a list of every node label combination, and every nodelable
