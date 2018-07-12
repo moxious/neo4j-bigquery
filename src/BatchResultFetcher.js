@@ -54,7 +54,7 @@ module.exports = class BatchResultFetcher {
                 const count = result.records[0].get('count').toNumber();                
                 this.count = count;
                 this.batches = [...utils.range(0, count, this.batchSize)];
-                log.info(this.name, count, 'total to fetch, which will be divided into ', this.count, 'batches');
+                log.info(this.name, count, 'total to fetch, which will be divided into ', this.batches.length, 'batches');
                 return count;
             });
     }
