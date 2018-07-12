@@ -23,8 +23,8 @@ const config = {
     neo4jURI: process.env.NEO4J_URI || 'bolt://localhost:7687',
     neo4jUser: process.env.NEO4J_USERNAME || 'neo4j',
     neo4jPass: process.env.NEO4J_PASSWORD || 'admin',
-    writeDir: '/tmp/csv',
-    datasetName: 'neo4j_export_' + Math.floor(Math.random() * 999),
+    writeDir: '/tmp',
+    dataset: 'neo4j_export_' + Math.floor(Math.random() * 999),
     datasetId: undefined, /* Captured on create */
     removeFiles: true,
 };
@@ -204,8 +204,33 @@ const relBackend = (relCombo, batchResultFetcher) => {
     return batchResultFetcher.getCount().then(() => new PromisePool(promiseProducer, conc));
 };
 
+const usage = () => {
+    console.log('Usage:');
+    console.log('node neo4j-bigquery-import \\');
+    console.log('   --dataset=DATASET_NAME');
+    console.log('   --neo4jUser=neo4j');
+    console.log('   --neo4jPass=secret');
+    console.log('   --neo4jURI=bolt://localhost');
+    console.log('   --concurrency=3');
+};
+
 const main = args => {
+    if (args.help || args.h) {
+        usage();
+        process.exit(1);
+    }
+
+    const configKeys = ['dataset', 'concurrency', 'writeDir', 
+        'neo4jURI', 'neo4jUser', 'neo4jPass'];
+
+    configKeys.forEach(key => {
+        if (args[key]) {
+            config[key] = args[key];
+        }
+    });
+
     log.info('MAIN', args, config);
+
     // OVERALL FLOW
     //
     // (SETUP) - fetch a list of every node label combination, and every nodelable
@@ -235,7 +260,7 @@ const main = args => {
     return Promise.all([
         allLabelCombos(), 
         allRelCombos(), 
-        bqConn.createDataset(config.datasetName)])
+        bqConn.createDataset(config.dataset)])
         .then(([labelCombos, relCombos, results]) => {
             const dataset = results[0];
             config.datasetId = dataset.id;

@@ -24,7 +24,7 @@ const DEFAULT_OPTIONS = {
 };
 
 // Your Google Cloud Platform project ID
-const projectId = process.env.PROJECT || 'testbed-187316';
+let projectId = process.env.PROJECT || 'testbed-187316';
 
 /**
  * Get a configured instance of a bigquery object, pulling from environment
