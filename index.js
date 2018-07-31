@@ -19,7 +19,7 @@ const cypherCommon = require('./src/cypher-common');
  * Adjustable configuration that drives everything.
  */
 const config = {
-    concurrency: Number.isNaN(process.env.CONCURRENCY) ? 3 : Number(process.env.CONCURRENCY),
+    concurrency: Number.isNaN(Number(process.env.CONCURRENCY)) ? 3 : Number(process.env.CONCURRENCY),
     neo4jURI: process.env.NEO4J_URI || 'bolt://localhost:7687',
     neo4jUser: process.env.NEO4J_USERNAME || 'neo4j',
     neo4jPass: process.env.NEO4J_PASSWORD || 'admin',
@@ -307,7 +307,7 @@ const main = args => {
                         return null;
                     };
 
-                    // Main concurrency control is here.
+                    // Main concurrency control is here.                    
                     const poolOfPools = new PromisePool(poolOfPoolsPromiseProducer, config.concurrency);
 
                     // When pool of pools is done, entire load complete.
